@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dicey — Join Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8f7f4;
+      font-family: 'Crimson Text', 'Georgia', serif;
+      color: #1a1a1a;
+    }
+
+    .card {
+      background: #fff;
+      border: 1.5px solid #d5d0c8;
+      border-radius: 12px;
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    }
+
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+    }
+
+    h1 {
+      font-family: 'IM Fell English', 'Georgia', serif;
+      font-style: italic;
+      font-size: 2rem;
+      font-weight: normal;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    .room-label {
+      font-size: 0.85rem;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .room-name {
+      font-family: 'IM Fell English', 'Georgia', serif;
+      font-size: 1.6rem;
+      padding: 12px 20px;
+      background: #f8f7f4;
+      border: 1.5px solid #d5d0c8;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      word-break: break-all;
+    }
+
+    .status {
+      padding: 14px 20px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+
+    .status-waiting {
+      background: #fef9e7;
+      border: 1px solid #f0e0a0;
+      color: #7a6c2a;
+    }
+
+    .status-joined {
+      background: #eaf7ea;
+      border: 1px solid #a0d8a0;
+      color: #2a6a2a;
+    }
+
+    .status-noext {
+      background: #fdf2f2;
+      border: 1px solid #e0b0b0;
+      color: #8a3a3a;
+    }
+
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 24px;
+      background: #1a1a1a;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Crimson Text', 'Georgia', serif;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #333; }
+
+    .no-room {
+      font-style: italic;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <svg class="icon" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="64,6 116,34 116,94 64,122 12,94 12,34" fill="#c9a050" stroke="#1a1a1a" stroke-width="10" stroke-linejoin="round"/>
+    </svg>
+
+    <h1>dicey</h1>
+    <p class="subtitle">P2P dice roller &amp; progress clocks</p>
+
+    <div id="content">
+      <div class="no-room">No room specified in URL.</div>
+    </div>
+  </div>
+
+  <script>
+    const roomId = decodeURIComponent(window.location.hash.slice(1)).trim();
+    const content = document.getElementById('content');
+
+    if (roomId) {
+      content.innerHTML = `
+        <div class="room-label">Room</div>
+        <div class="room-name">${roomId.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div class="status status-waiting" id="status">
+          If you have the <strong>dicey</strong> extension installed, it will join automatically&hellip;
+        </div>
+        <button class="copy-btn" id="copy-btn" title="Copy room ID to clipboard">
+          Copy Room ID
+        </button>
+      `;
+
+      document.getElementById('copy-btn').addEventListener('click', () => {
+        navigator.clipboard.writeText(roomId).then(() => {
+          const btn = document.getElementById('copy-btn');
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = 'Copy Room ID'; }, 2000);
+        });
+      });
+
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'DICEY_JOIN_CONFIRMED') {
+          const status = document.getElementById('status');
+          status.className = 'status status-joined';
+          status.innerHTML = 'Joined room <strong>' + roomId.replace(/</g, '&lt;') + '</strong>. You can close this tab.';
+        }
+      });
+
+      setTimeout(() => {
+        const status = document.getElementById('status');
+        if (status && status.classList.contains('status-waiting')) {
+          status.className = 'status status-noext';
+          status.innerHTML = 'The <strong>dicey</strong> extension didn&rsquo;t respond. Make sure it&rsquo;s installed, then refresh this page. Or copy the Room ID above and paste it manually.';
+        }
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
