@@ -71,10 +71,17 @@
     }
 
     .status {
-      padding: 14px 20px;
+      padding: 16px 20px;
       border-radius: 8px;
-      font-size: 0.95rem;
-      margin-bottom: 20px;
+      font-size: 0.98rem;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .status strong {
+      display: block;
+      font-size: 1.15rem;
+      margin-bottom: 2px;
     }
 
     .status-waiting {
@@ -95,21 +102,67 @@
       color: #8a3a3a;
     }
 
+    .next-step {
+      margin-bottom: 6px;
+      font-size: 1rem;
+      color: #2e2e2e;
+    }
+
+    .helper-text {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 18px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .install-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 260px;
+      padding: 11px 20px;
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #1a1a1a;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: background 0.15s;
+    }
+
+    .install-btn:hover {
+      background: #333;
+    }
+
     .copy-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px 24px;
-      background: #1a1a1a;
-      color: #fff;
-      border: none;
+      justify-content: center;
+      width: 100%;
+      max-width: 260px;
+      padding: 10px 20px;
+      background: #fff;
+      color: #3b3b3b;
+      border: 1px solid #c8c2b8;
       border-radius: 6px;
       font-family: 'Crimson Text', 'Georgia', serif;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
     }
-    .copy-btn:hover { background: #333; }
+
+    .copy-btn:hover {
+      border-color: #9f9688;
+      color: #1a1a1a;
+      background: #faf9f7;
+    }
 
     .no-room {
       font-style: italic;
@@ -132,42 +185,93 @@
   </div>
 
   <script>
+    const INSTALL_URL = 'https://TODO-ADD-CHROME-WEB-STORE-LINK';
     const roomId = decodeURIComponent(window.location.hash.slice(1)).trim();
     const content = document.getElementById('content');
 
-    if (roomId) {
-      content.innerHTML = `
-        <div class="room-label">Room</div>
-        <div class="room-name">${roomId.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-        <div class="status status-waiting" id="status">
-          If you have the <strong>dicey</strong> extension installed, it will join automatically&hellip;
-        </div>
-        <button class="copy-btn" id="copy-btn" title="Copy room ID to clipboard">
-          Copy Room ID
-        </button>
-      `;
+    function escapeHtml(value) {
+      return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
 
-      document.getElementById('copy-btn').addEventListener('click', () => {
+    function attachCopyHandler() {
+      const copyBtn = document.getElementById('copy-btn');
+      if (!copyBtn) return;
+
+      copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(roomId).then(() => {
-          const btn = document.getElementById('copy-btn');
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Copy Room ID'; }, 2000);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            if (copyBtn.isConnected) copyBtn.textContent = 'Copy Room ID';
+          }, 2000);
+        }).catch(() => {
+          copyBtn.textContent = 'Copy failed';
+          setTimeout(() => {
+            if (copyBtn.isConnected) copyBtn.textContent = 'Copy Room ID';
+          }, 2000);
         });
       });
+    }
+
+    if (roomId) {
+      const safeRoomId = escapeHtml(roomId);
+      content.innerHTML = `
+        <div class="room-label">Room</div>
+        <div class="room-name">${safeRoomId}</div>
+        <div class="status status-waiting" id="status">
+          <strong>Joining room in the background...</strong>
+          If Dicey is installed, you should be connected automatically in a moment.
+        </div>
+        <p class="next-step" id="next-step"></p>
+        <p class="helper-text" id="helper-text"></p>
+        <div class="actions" id="actions">
+          <button class="copy-btn" id="copy-btn" title="Copy room ID to clipboard">Copy Room ID</button>
+        </div>
+      `;
+
+      const status = document.getElementById('status');
+      const nextStep = document.getElementById('next-step');
+      const helperText = document.getElementById('helper-text');
+      const actions = document.getElementById('actions');
+
+      attachCopyHandler();
+
+      function setJoinedState() {
+        status.className = 'status status-joined';
+        status.innerHTML = `<strong>You&apos;re in!</strong>Successfully joined <strong>${safeRoomId}</strong>.`;
+        nextStep.innerHTML = 'You can safely close this tab. Open <strong>Dicey</strong> in your browser toolbar to start rolling.';
+        helperText.textContent = 'Need to leave later? Open Dicey and disconnect from the network status menu.';
+        actions.innerHTML = '<button class="copy-btn" id="copy-btn" title="Copy room ID to clipboard">Copy Room ID</button>';
+        attachCopyHandler();
+      }
+
+      function setNoExtensionState() {
+        status.className = 'status status-noext';
+        status.innerHTML = '<strong>Dicey is not responding.</strong>Install Dicey to join this room.';
+        nextStep.textContent = 'After installing, reopen this invite link and you should join automatically.';
+        helperText.textContent = 'You can also copy the Room ID and paste it manually inside the extension.';
+        actions.innerHTML = `
+          <a class="install-btn" href="${INSTALL_URL}" target="_blank" rel="noopener noreferrer">
+            Install Dicey to Join
+          </a>
+          <button class="copy-btn" id="copy-btn" title="Copy room ID to clipboard">Copy Room ID</button>
+        `;
+        attachCopyHandler();
+      }
 
       window.addEventListener('message', (e) => {
         if (e.data && e.data.type === 'DICEY_JOIN_CONFIRMED') {
-          const status = document.getElementById('status');
-          status.className = 'status status-joined';
-          status.innerHTML = 'Joined room <strong>' + roomId.replace(/</g, '&lt;') + '</strong>. You can close this tab.';
+          setJoinedState();
         }
       });
 
       setTimeout(() => {
-        const status = document.getElementById('status');
         if (status && status.classList.contains('status-waiting')) {
-          status.className = 'status status-noext';
-          status.innerHTML = 'The <strong>dicey</strong> extension didn&rsquo;t respond. Make sure it&rsquo;s installed, then refresh this page. Or copy the Room ID above and paste it manually.';
+          setNoExtensionState();
         }
       }, 5000);
     }
